@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Space Invaders</title>
+    <style>
+      #gameCanvas {
+        background-color: #000000;
+        border: 2px solid #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="480" height="600"></canvas>
+    <script>
+      let canvas = document.getElementById("gameCanvas");
+      let context = canvas.getContext("2d");
+
+      class Player {
+        constructor() {
+          this.x = canvas.width/2;
+          this.y = canvas.height - 30;
+          this.speed = 5;
+          this.bullets = [];
+          this.bulletSpeed = -5;
+          this.width = 20;
+          this.height = 20;
+        }
+
+        draw() {
+          context.beginPath();
+          context.rect(this.x, this.y, this.width, this.height);
+          context.fillStyle = "#ffffff";
+          context.fill();
+          context.closePath();
+        }
+
+        moveLeft() {
+          this.x -= this.speed;
+          if (this.x < 0) {
+            this.x = 0;
+          }
+        }
+
+        moveRight() {
+          this.x += this.speed;
+          if (this.x + this.width > canvas.width) {
+            this.x = canvas.width - this.width;
+          }
+        }
+
+        shoot() {
+          let bullet = new Bullet(this.x + this.width/2, this.y, this.bulletSpeed);
+          this.bullets.push(bullet);
+        }
+
+        updateBullets() {
+          this.bullets.forEach((bullet, index) => {
+            bullet.update();
+            if (bullet.y < 0) {
+              this.bullets.splice(index, 1);
+            }
+          });
+        }
+
+        drawBullets() {
+          this.bullets.forEach(bullet => {
+            bullet.draw();
+          });
+        }
+      }
+
+      class Alien {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.speed = alienSpeed;
+          this.width = 20;
+          this.height = 20;
+          this.isDead = false;
+        }
+
+        draw() {
+          context.beginPath();
+          context.rect(this.x, this.y, this.width, this.height);
+          context.fillStyle = "#00ff00";
+          context.fill();
+          context.closePath();
+        }
+
+        move() {
+          this.x += this.speed;
+          if (this.x + this.width > canvas.width || this.x < 0) {
+            this.speed = -this.speed;
+            this.y += this.height;
+          }
+        }
+
+        die() {
+          this.isDead = true;
+        }
+      }
+
+      class Bullet {
+        constructor(x, y, speed) {
+          this.x = x;
+          this.y = y;
+          this.speed = speed;
+          this.width = 2;
+          this.height = 10;
+        }
+
+        update() {
+          this.y += this.speed;
+        }
+
+        draw() {
+          context.beginPath();
+          context.rect(this.x, this.y, this.width, this.height);
+          context.fillStyle = "#ffffff";
+          context.fill();
+          context.closePath();
+        }
+      }
+
+      let player = new Player();
+      let aliens = [];
+      let alienRows = 5;
+      let alienCols = 10;
+      let alienWidth = 20;
+      let alienHeight = 20;
+      let alienGap = 10;
+      let alienSpeed = 1;
+      let level = 1;
+            // ...
+      for (let i = 0; i < alienRows; i++) {
+        aliens[i] = [];
+        for (let j = 0; j < alienCols; j++) {
+          let x = j * (alienWidth + alienGap) + alienGap;
+          let y = i * (alienHeight + alienGap) + alienGap;
+          aliens[i][j] = new Alien(x, y);
+        }
+      }
+
+      function draw() {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        player.draw();
+        player.drawBullets();
+
+        for (let i = 0; i < alienRows; i++) {
+          for (let j = 0; j < alienCols; j++) {
+            if (!aliens[i][j].isDead) {
+              aliens[i][j].draw();
+            }
+          }
+        }
+      }
+
+      function update() {
+        player.updateBullets();
+
+        for (let i = 0; i < alienRows; i++) {
+          for (let j = 0; j < alienCols; j++) {
+            if (!aliens[i][j].isDead) {
+              aliens[i][j].move();
+              if (aliens[i][j].y + aliens[i][j].height >= canvas.height) {
+                alert("Game Over!");
+                document.location.reload();
+              }
+            }
+          }
+        }
+
+        // Check for bullet-alien collisions
+        for (let i = 0; i < player.bullets.length; i++) {
+          for (let j = 0; j < alienRows; j++) {
+            for (let k = 0; k < alienCols; k++) {
+              if (!aliens[j][k].isDead && collisionDetection(player.bullets[i], aliens[j][k])) {
+                aliens[j][k].die();
+                player.bullets.splice(i, 1);
+                if (areAllAliensDead()) {
+                  level++;
+                  increaseDifficulty();
+                  resetAliens();
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      function increaseDifficulty() {
+        alienSpeed += 0.5;
+        player.bulletSpeed -= 1;
+      }
+
+      function resetAliens() {
+        for (let i = 0; i < alienRows; i++) {
+          for (let j = 0; j < alienCols; j++) {
+            let x = j * (alienWidth + alienGap) + alienGap;
+            let y = i * (alienHeight + alienGap) + alienGap;
+            aliens[i][j] = new Alien(x, y);
+          }
+        }
+      }
+
+      function areAllAliensDead() {
+        for (let i = 0; i < alienRows; i++) {
+          for (let j = 0; j < alienCols; j++) {
+            if (!aliens[i][j].isDead) {
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+
+      function collisionDetection(bullet, alien) {
+        if (bullet.x < alien.x + alien.width &&
+            bullet.x + bullet.width > alien.x &&
+            bullet.y < alien.y + alien.height &&
+            bullet.y + bullet.height > alien.y) {
+          return true;
+        }
+        return false;
+      }
+
+      function gameLoop() {
+        draw();
+        update();
+        requestAnimationFrame(gameLoop);
+      }
+
+        // ...
+      document.addEventListener("keydown", event => {
+        if (event.keyCode === 37) {
+          player.moveLeft();
+        } else if (event.keyCode === 39) {
+          player.moveRight();
+        } else if (event.keyCode === 32) {
+          player.shoot();
+        }
+      });
+
+      gameLoop();
+    </script>
+  </body>
+</html>
